@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	yl "github.com/gnewton/yastapii/lib"
 	"github.com/jinzhu/gorm"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
@@ -29,7 +30,7 @@ func main() {
 	}
 
 	fmt.Println("===============================")
-	var tu []TaxonomicUnit
+	var tu []yl.TaxonomicUnit
 	//n := db.Where("rank_id=?", "10").Find(&tu)
 	n := db.Offset(22111).Limit(100).Find(&tu)
 	errors := n.GetErrors()
@@ -48,7 +49,7 @@ func main() {
 		fmt.Println(tu[i].Tsn, " ", tu[i].Unit_name1, "   ", rank.Rank_name)
 		//bb := getTaxonomicUnitByTSN(db, tu[i].Tsn)
 		//fmt.Printf("** %v\n", bb)
-		parents := getTaxonomicUnitAncestors(db, &tu[i])
+		parents := yl.GetTaxonomicUnitAncestors(db, &tu[i])
 		fmt.Println("Parents")
 		for j, _ := range parents {
 			rank, ok := taxonUnitsMap[int64(parents[j].Rank_id)]
@@ -57,7 +58,7 @@ func main() {
 			}
 			fmt.Println("\t", parents[j].Tsn, " ", parents[j].Unit_name1, "   ", rank.Rank_name)
 		}
-		children := getTaxonomicUnitChildren(db, &tu[i])
+		children := yl.GetTaxonomicUnitChildren(db, &tu[i])
 		fmt.Println("Children")
 		for j, _ := range children {
 			rank, ok := taxonUnitsMap[int64(children[j].Rank_id)]

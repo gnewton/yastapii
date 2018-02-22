@@ -1,4 +1,4 @@
-package main
+package lib
 
 import (
 	"github.com/jinzhu/gorm"
@@ -50,29 +50,29 @@ type TaxonomicUnit struct {
 	Complete_name      string
 }
 
-func getTaxonomicUnitByTSN(db *gorm.DB, tsn int64) *TaxonomicUnit {
+func GetTaxonomicUnitByTSN(db *gorm.DB, tsn int64) *TaxonomicUnit {
 	var tu TaxonomicUnit
 	db.Where("tsn=?", tsn).First(&tu)
 
 	return &tu
 }
 
-func getTaxonomicUnitChildren(db *gorm.DB, tu *TaxonomicUnit) []*TaxonomicUnit {
+func GetTaxonomicUnitChildren(db *gorm.DB, tu *TaxonomicUnit) []*TaxonomicUnit {
 	var children []*TaxonomicUnit
 	db.Where("parent_tsn=?", tu.Tsn).Find(&children)
 	return children
 }
 
-func getTaxonomicUnitAncestors(db *gorm.DB, tu *TaxonomicUnit) []*TaxonomicUnit {
+func GetTaxonomicUnitAncestors(db *gorm.DB, tu *TaxonomicUnit) []*TaxonomicUnit {
 	if tu.Parent_tsn <= 0 {
 		return nil
 	}
-	parent := getTaxonomicUnitByTSN(db, tu.Parent_tsn)
+	parent := GetTaxonomicUnitByTSN(db, tu.Parent_tsn)
 	//fmt.Println(parent)
 
 	parents := make([]*TaxonomicUnit, 1)
 
-	parents = append(getTaxonomicUnitAncestors(db, parent), parent)
+	parents = append(GetTaxonomicUnitAncestors(db, parent), parent)
 	return parents
 
 }

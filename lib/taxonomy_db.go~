@@ -1,0 +1,78 @@
+package lib
+
+import (
+	"github.com/jinzhu/gorm"
+	"time"
+)
+
+type TaxonUnitType2 struct {
+	KingdomId       int64
+	RankId          int64
+	RankName        string
+	DirParentRankId int64
+	ReqParentRankId int64
+}
+
+type TaxonUnitType struct {
+	Kingdom_id         int64
+	Rank_id            int64
+	Rank_name          string
+	Dir_parent_rank_id int64
+	Req_parent_rank_id int64
+}
+
+type TaxonomicUnit struct {
+	Tsn                int64
+	Unit_ind1          []byte
+	Unit_name1         string
+	Unit_ind2          string
+	Unit_name2         string
+	Unit_ind3          string
+	Unit_name3         string
+	Unit_ind4          string
+	Unit_name4         string
+	Unnamed_taxon_ind  string
+	Name_usage         string
+	Unaccept_reason    string
+	Credibility_rtng   string
+	Completeness_rtng  string
+	Currency_rating    string
+	Phylo_sort_seq     int32
+	Initial_time_stamp time.Time
+	Parent_tsn         int64
+	Taxon_author_id    int64
+	Hybrid_author_id   int64
+	Kingdom_id         int32
+	Rank_id            int32
+	Update_date        time.Time
+	Uncertain_prnt_ind string
+	N_usage            string
+	Complete_name      string
+}
+
+func getTaxonomicUnitByTSN(db *gorm.DB, tsn int64) *TaxonomicUnit {
+	var tu TaxonomicUnit
+	db.Where("tsn=?", tsn).First(&tu)
+
+	return &tu
+}
+
+func getTaxonomicUnitChildren(db *gorm.DB, tu *TaxonomicUnit) []*TaxonomicUnit {
+	var children []*TaxonomicUnit
+	db.Where("parent_tsn=?", tu.Tsn).Find(&children)
+	return children
+}
+
+func getTaxonomicUnitAncestors(db *gorm.DB, tu *TaxonomicUnit) []*TaxonomicUnit {
+	if tu.Parent_tsn <= 0 {
+		return nil
+	}
+	parent := getTaxonomicUnitByTSN(db, tu.Parent_tsn)
+	//fmt.Println(parent)
+
+	parents := make([]*TaxonomicUnit, 1)
+
+	parents = append(getTaxonomicUnitAncestors(db, parent), parent)
+	return parents
+
+}
