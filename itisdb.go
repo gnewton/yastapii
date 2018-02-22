@@ -1,0 +1,70 @@
+package main
+
+import (
+	"fmt"
+	"github.com/jinzhu/gorm"
+	_ "github.com/mattn/go-sqlite3"
+	"log"
+)
+
+// Get Root
+
+func initDB() *gorm.DB {
+	db, err := gorm.Open("sqlite3", "./data/ITIS.sqlite")
+	//db, err := sql.Open("sqlite3", "./data/ITIS.sqlite")
+	if err != nil {
+		log.Fatal(err)
+	}
+	return db
+}
+
+func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	db := initDB()
+	defer db.Close()
+
+	err := cacheTaxonUnits(db)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("===============================")
+	var tu []TaxonomicUnit
+	//n := db.Where("rank_id=?", "10").Find(&tu)
+	n := db.Offset(22111).Limit(100).Find(&tu)
+	errors := n.GetErrors()
+	if errors != nil && len(errors) > 0 {
+		fmt.Println("mmmmmmmmm", errors)
+		log.Fatal("foo")
+	}
+
+	for i, _ := range tu {
+		fmt.Println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ")
+		fmt.Println(" ")
+		rank, ok := taxonUnitsMap[int64(tu[i].Rank_id)]
+		if !ok {
+			log.Fatal("LLm2")
+		}
+		fmt.Println(tu[i].Tsn, " ", tu[i].Unit_name1, "   ", rank.Rank_name)
+		//bb := getTaxonomicUnitByTSN(db, tu[i].Tsn)
+		//fmt.Printf("** %v\n", bb)
+		parents := getTaxonomicUnitAncestors(db, &tu[i])
+		fmt.Println("Parents")
+		for j, _ := range parents {
+			rank, ok := taxonUnitsMap[int64(parents[j].Rank_id)]
+			if !ok {
+				log.Fatal("LL")
+			}
+			fmt.Println("\t", parents[j].Tsn, " ", parents[j].Unit_name1, "   ", rank.Rank_name)
+		}
+		children := getTaxonomicUnitChildren(db, &tu[i])
+		fmt.Println("Children")
+		for j, _ := range children {
+			rank, ok := taxonUnitsMap[int64(children[j].Rank_id)]
+			if !ok {
+				log.Fatal("MM")
+			}
+			fmt.Println("\t +++", children[j].Tsn, " ", children[j].Unit_name1, " ", children[j].Unit_name2, " ", children[j].Unit_name3, " ", children[j].Unit_name4, "   ", rank.Rank_name)
+		}
+	}
+}
