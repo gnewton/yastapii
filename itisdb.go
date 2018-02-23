@@ -3,9 +3,12 @@ package main
 import (
 	"fmt"
 	yl "github.com/gnewton/yastapii/lib"
+	"github.com/google/jsonapi"
+	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
+	"net/http"
 )
 
 // Get Root
@@ -19,10 +22,27 @@ func initDB() *gorm.DB {
 	return db
 }
 
+func (node Node) JSONAPILinks() *jsonapi.Links {
+	return &jsonapi.Links{
+		"self": jsonapi.Link{
+			Href: fmt.Sprintf("node/%d", node.Id),
+		},
+	}
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	//http.HandleFunc("/", handler)
+	//log.Fatal(http.ListenAndServe(":8080", nil))
+
+	router := mux.NewRouter()
+
 	db := initDB()
 	defer db.Close()
+
+	addHandlers(router, db)
+	log.Fatal(http.ListenAndServe(":8080", router))
 
 	err := cacheTaxonUnits(db)
 	if err != nil {

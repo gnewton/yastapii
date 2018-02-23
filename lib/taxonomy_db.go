@@ -50,11 +50,25 @@ type TaxonomicUnit struct {
 	Complete_name      string
 }
 
+func Count(db *gorm.DB, o struct{}, where string) int64 {
+	var count int64
+	db.Find(&o).Count(&count)
+	return count
+}
+
 func GetTaxonomicUnitByTSN(db *gorm.DB, tsn int64) *TaxonomicUnit {
 	var tu TaxonomicUnit
 	db.Where("tsn=?", tsn).First(&tu)
-
+	if tu.Tsn == 0 {
+		return nil
+	}
 	return &tu
+}
+
+func GetTaxonomicUnitAllOffsetLimit(db *gorm.DB, offset, limit int64) []TaxonomicUnit {
+	var tu []TaxonomicUnit
+	db.Offset(offset).Limit(limit).Find(&tu)
+	return tu
 }
 
 func GetTaxonomicUnitChildren(db *gorm.DB, tu *TaxonomicUnit) []*TaxonomicUnit {
