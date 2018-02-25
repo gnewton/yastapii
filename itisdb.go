@@ -40,14 +40,13 @@ func main() {
 
 	db := initDB()
 	defer db.Close()
-
-	addHandlers(router, db)
-	log.Fatal(http.ListenAndServe(":8080", router))
-
 	err := cacheTaxonUnits(db)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	addHandlers(router, db)
+	log.Fatal(http.ListenAndServe(":8080", router))
 
 	fmt.Println("===============================")
 	var tu []yl.TaxonomicUnit

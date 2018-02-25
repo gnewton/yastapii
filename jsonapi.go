@@ -6,15 +6,16 @@ type Taxonomy struct {
 }
 
 type Taxa struct {
-	ID   int64    `jsonapi:"primary,taxons"`
-	Taxa []*Taxon `jsonapi:"attr,taxons"`
+	ID            int64    `jsonapi:"primary,taxons"`
+	Taxa          []*Taxon `jsonapi:"relation,taxons"`
+	offset, limit int64
 }
 
 type Taxon struct {
-	ID       int64  `jsonapi:"primary,taxon"`
-	Name     string `jsonapi:"attr,name,omitempty"`
-	RankName string `jsonapi:"attr,rank_name,omitempty"`
-	paging   bool
+	ID        int64  `jsonapi:"primary,taxon"`
+	Name      string `jsonapi:"attr,name,omitempty"`
+	RankName  string `jsonapi:"attr,rank_name,omitempty"`
+	NameUsage string `jsonapi:"attr,name_usage,omitempty"`
 }
 
 type Node struct {

@@ -42,8 +42,8 @@ type TaxonomicUnit struct {
 	Parent_tsn         int64
 	Taxon_author_id    int64
 	Hybrid_author_id   int64
-	Kingdom_id         int32
-	Rank_id            int32
+	Kingdom_id         int64
+	Rank_id            int64
 	Update_date        time.Time
 	Uncertain_prnt_ind string
 	N_usage            string
