@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 )
 
 const ID = "id"
@@ -25,12 +26,16 @@ func addHandlers(router *mux.Router, db *gorm.DB) {
 	//router.HandleFunc("/taxon", m.GetTaxa).Queries("foo", "{foo}").Methods("GET")
 
 	router.HandleFunc("/taxon", m.GetTaxa).Methods("GET")
-
+	mm = make(map[string]*Extras)
 }
 
 type Manager struct {
 	db *gorm.DB
 }
+
+var sm sync.Map
+
+var mm map[string]*Extras
 
 func (m *Manager) GetTaxa(w http.ResponseWriter, r *http.Request) {
 
@@ -38,13 +43,15 @@ func (m *Manager) GetTaxa(w http.ResponseWriter, r *http.Request) {
 	log.Println(r.URL.Query())
 	w.Header().Set("Content-Type", jsonapi.MediaType)
 
-	offset, limit, err := makeOffsetLimit(r.URL.Query())
+	var err error
+	extras := new(Extras)
+	extras.offset, extras.limit, err = makeOffsetLimit(r.URL.Query())
+
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	log.Println("============", offset, limit)
-	//offset, limit, err := makeOffsetLimit(mux.Vars(r))
+	log.Println("============", extras.offset, extras.limit)
 
 	if err != nil {
 		jsonapi.MarshalErrors(w, []*jsonapi.ErrorObject{{
@@ -56,24 +63,26 @@ func (m *Manager) GetTaxa(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tu := yl.GetTaxonomicUnitAllOffsetLimit(m.db, offset, limit)
-	log.Println("GetTaxa")
+	tu := yl.GetTaxonomicUnitAllOffsetLimit(m.db, extras.offset, extras.limit)
 	taxons := convertItisTaxonomicUnits(tu, true)
-	log.Println("GetTaxa")
-	//taxa := new(Taxa)
-	//taxa := new(Taxons)
-	//taxa.Taxa = taxons
-	//taxa.offset = offset
-	//taxa.limit = limit
-	//taxa.ID = 42
+
+	addr := addressAsString(taxons)
+	log.Println("GetTaxa addr", addr)
+	//sm.Store(addr, extras)
+	sm.Store(&taxons, extras)
+	mm[addr] = extras
 
 	//w.WriteHeader(201)
 	//if err := jsonapi.MarshalPayloadWithoutIncluded(w, taxa); err != nil {
-	//if err := jsonapi.MarshalPayloadWithoutIncluded(w, taxons); err != nil {
-	if err := jsonapi.MarshalPayload(w, taxons); err != nil {
+	if err := jsonapi.MarshalPayloadWithoutIncluded(w, taxons); err != nil {
+		//if err := jsonapi.MarshalPayload(w, taxons); err != nil {
 		//if err := jsonapi.MarshalPayload(w, taxa); err != nil {
 		http.Error(w, err.Error(), 500)
 	}
+}
+
+type Extras struct {
+	offset, limit int64
 }
 
 func (taxon Taxon) JSONAPILinks() *jsonapi.Links {
@@ -91,7 +100,7 @@ type Taxons []*Taxon
 
 func (taxa Taxons) JSONAPIMeta() *jsonapi.Meta {
 	log.Println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-	a := fmt.Sprintf("mm%pmm", &(taxa[0]))
+	a := fmt.Sprintf("%p", &taxa)
 	log.Println(a)
 	return &jsonapi.Meta{
 		"details": "sample details here",
@@ -99,28 +108,35 @@ func (taxa Taxons) JSONAPIMeta() *jsonapi.Meta {
 }
 
 func (taxa Taxons) JSONAPILinks() *jsonapi.Links {
+	addr := addressAsString(taxa)
+	extras, ok := mm[addr]
+	if !ok {
+		log.Fatal("Missing address")
+	}
+	// FIXX with RWMutex
+	delete(mm, addr)
 	log.Println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%mm")
 	return &jsonapi.Links{
 		"next": jsonapi.Link{
-			//Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLNext(taxa.offset, taxa.limit)),
-			Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLNext(10, 10)),
+			Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLNext(extras.offset, extras.limit)),
+			//Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLNext(10, 10)),
 		},
 		"previous": jsonapi.Link{
-			//Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLPrevious(taxa.offset, taxa.limit)),
-			Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLNext(10, 10)),
+			Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLPrevious(extras.offset, extras.limit)),
+			//Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLNext(10, 10)),
 		},
 		"first": jsonapi.Link{
-			//Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLFirst(taxa.limit)),
-			Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLNext(10, 10)),
+			Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLFirst(extras.limit)),
+			//Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLNext(10, 10)),
 		},
 		"this": jsonapi.Link{
-			//Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURL(taxa.offset, taxa.limit)),
-			Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLNext(10, 10)),
+			Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURL(extras.offset, extras.limit)),
+			//Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLNext(10, 10)),
 		},
 
 		"last": jsonapi.Link{
-			//Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLLast(10000, taxa.limit)),
-			Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLNext(10, 10)),
+			Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLLast(10000, extras.limit)),
+			//Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLNext(10, 10)),
 		},
 	}
 }

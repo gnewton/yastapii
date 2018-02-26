@@ -9,6 +9,12 @@ import (
 	"strconv"
 )
 
+func addressAsString(v interface{}) string {
+	tmp := fmt.Sprintf("%p", v)
+	log.Println("Addresds as string", tmp)
+	return tmp
+}
+
 func convertItisTaxonomicUnit(tu *yl.TaxonomicUnit) *Taxon {
 	if tu == nil {
 		return nil
@@ -47,9 +53,7 @@ func convertItisTaxonomicUnits(tu []yl.TaxonomicUnit, paging bool) Taxons {
 	}
 	l := len(tu)
 
-	//taxa := make([]*Taxon, l)
 	taxa := make(Taxons, l)
-
 	for i := 0; i < l; i++ {
 		taxon := convertItisTaxonomicUnit(&tu[i])
 		taxa[i] = taxon
