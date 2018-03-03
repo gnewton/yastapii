@@ -73,7 +73,7 @@ func (m *Manager) GetAllTaxons(w http.ResponseWriter, r *http.Request) {
 
 	tu := yl.GetTaxonomicUnitAllOffsetLimit(m.db, extras.links.offset, extras.links.limit)
 	taxons := convertItisTaxonomicUnits(tu, true)
-	extras.meta.Count = int64(len(taxons))
+	extras.meta.Count = uint64(len(taxons))
 	extras.meta.TotalCount = numTaxons
 
 	addr := addressAsString(taxons)
@@ -136,7 +136,7 @@ func (m *Manager) GetSingleTaxon(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Missing parameter", 500)
 	}
 	log.Printf("params: %v\n", params)
-	id, err := strconv.ParseInt(s, 10, 64)
+	id, err := strconv.ParseUint(s, 10, 64)
 	if err != nil {
 		http.Error(w, "FIXXX", 500)
 	}

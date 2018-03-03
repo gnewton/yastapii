@@ -16,12 +16,12 @@ type Extras struct {
 }
 
 type Links struct {
-	offset, limit int64
+	offset, limit uint64
 }
 
 type Meta struct {
-	Count      int64
-	TotalCount int64
+	Count      uint64
+	TotalCount uint64
 }
 
 func addressAsString(v interface{}) string {
@@ -81,7 +81,7 @@ func convertItisTaxonomicUnits(tu []yl.TaxonomicUnit, paging bool) Taxons {
 const PAGE_OFFSET = "page[offset]"
 const PAGE_LIMIT = "page[limit]"
 
-func makeOffsetLimits(offset, limit int64) *jsonapi.Links {
+func makeOffsetLimits(offset, limit uint64) *jsonapi.Links {
 	var links jsonapi.Links
 	links = make(map[string]interface{})
 
@@ -112,30 +112,30 @@ func makeOffsetLimits(offset, limit int64) *jsonapi.Links {
 	return &links
 }
 
-func makeOffsetLimitURL(offset, limit int64) string {
+func makeOffsetLimitURL(offset, limit uint64) string {
 	return fmt.Sprintf(PAGE_OFFSET+"=%d"+"&"+PAGE_LIMIT+"=%d", offset, limit)
 }
 
-func makeOffsetLimitURLNext(offset, limit int64) string {
+func makeOffsetLimitURLNext(offset, limit uint64) string {
 	return makeOffsetLimitURL(offset+limit, limit)
 }
 
-func makeOffsetLimitURLThis(offset, limit int64) string {
+func makeOffsetLimitURLThis(offset, limit uint64) string {
 
 	return makeOffsetLimitURL(offset, limit)
 }
 
-func makeOffsetLimitURLFirst(limit int64) string {
+func makeOffsetLimitURLFirst(limit uint64) string {
 
 	return makeOffsetLimitURL(0, limit)
 }
 
-func makeOffsetLimitURLLast(offset, limit int64) string {
+func makeOffsetLimitURLLast(offset, limit uint64) string {
 
 	return makeOffsetLimitURL(offset, limit)
 }
 
-func makeOffsetLimitURLPrevious(offset, limit int64) string {
+func makeOffsetLimitURLPrevious(offset, limit uint64) string {
 	if offset-limit < 0 {
 		offset = 0
 	} else {
@@ -145,9 +145,9 @@ func makeOffsetLimitURLPrevious(offset, limit int64) string {
 	//return fmt.Sprintf(PAGE_OFFSET+"=%d"+"&"+PAGE_LIMIT+"=%d", offset, limit)
 }
 
-func makeOffsetLimit(query url.Values) (int64, int64, error) {
-	var offset int64 = 0
-	var limit int64 = 10
+func makeOffsetLimit(query url.Values) (uint64, uint64, error) {
+	var offset uint64 = 0
+	var limit uint64 = 10
 	var err error
 
 	soffset := query.Get(PAGE_OFFSET)
@@ -157,17 +157,17 @@ func makeOffsetLimit(query url.Values) (int64, int64, error) {
 		return offset, limit, nil
 	}
 	if ((soffset == "") && (slimit != "")) || ((soffset == "") && (slimit != "")) {
-		return -1, -1, errors.New("Both " + PAGE_OFFSET + " and " + PAGE_LIMIT + " must be set")
+		return 0, 0, errors.New("Both " + PAGE_OFFSET + " and " + PAGE_LIMIT + " must be set")
 	}
 
-	offset, err = strconv.ParseInt(soffset, 10, 64)
+	offset, err = strconv.ParseUint(soffset, 10, 64)
 	if err != nil {
-		return -1, -1, nil
+		return 0, 0, err
 	}
 
-	limit, err = strconv.ParseInt(slimit, 10, 64)
+	limit, err = strconv.ParseUint(slimit, 10, 64)
 	if err != nil {
-		return -1, -1, nil
+		return 0, 0, err
 	}
 
 	return offset, limit, nil

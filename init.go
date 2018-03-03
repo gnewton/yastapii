@@ -7,15 +7,15 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
-var taxonUnitsMap map[int64]*yl.TaxonUnitType
-var numTaxons int64
+var taxonUnitsMap map[uint64]*yl.TaxonUnitType
+var numTaxons uint64
 
 func findMaxCounts(db *gorm.DB) {
 	numTaxons = yl.CountTaxonomicUnits(db, "")
 }
 
 func cacheTaxonUnits(db *gorm.DB) error {
-	taxonUnitsMap = make(map[int64]*yl.TaxonUnitType, 200)
+	taxonUnitsMap = make(map[uint64]*yl.TaxonUnitType, 200)
 	var tut []yl.TaxonUnitType
 	db.Find(&tut)
 	for i, _ := range tut {

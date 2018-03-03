@@ -1,7 +1,7 @@
 package main
 
 type Taxonomy struct {
-	ID   int64  `jsonapi:"primary,taxonomy"`
+	ID   uint64 `jsonapi:"primary,taxonomy"`
 	Name string `jsonapi:"attr,name"`
 }
 
@@ -12,7 +12,7 @@ type Taxonomy struct {
 // }
 
 type Taxon struct {
-	ID        int64  `jsonapi:"primary,taxon"`
+	ID        uint64 `jsonapi:"primary,taxon"`
 	Name      string `jsonapi:"attr,name,omitempty"`
 	RankName  string `jsonapi:"attr,rank_name,omitempty"`
 	NameUsage string `jsonapi:"attr,name_usage,omitempty"`
@@ -20,7 +20,7 @@ type Taxon struct {
 }
 
 type Node struct {
-	Id int64 `jsonapi:"primary,node"`
+	Id uint64 `jsonapi:"primary,node"`
 	//Taxon    *Taxon    `jsonapi:"relation,taxon"`
 	Taxon    *Taxon    `jsonapi:"relation,taxon,omitempty"`
 	Taxonomy *Taxonomy `jsonapi:"relation,taxonomy,omitempty"`
