@@ -50,9 +50,10 @@ type TaxonomicUnit struct {
 	Complete_name      string
 }
 
-func Count(db *gorm.DB, o struct{}, where string) int64 {
+func CountTaxonomicUnits(db *gorm.DB, where string) int64 {
 	var count int64
-	db.Find(&o).Count(&count)
+	var tmp TaxonomicUnit
+	db.Select("tsn").Find(&tmp).Count(&count)
 	return count
 }
 

@@ -5,17 +5,18 @@ type Taxonomy struct {
 	Name string `jsonapi:"attr,name"`
 }
 
-type Taxa struct {
-	ID            int64    `jsonapi:"primary,taxons"`
-	Taxa          []*Taxon `jsonapi:"relation,taxons"`
-	offset, limit int64
-}
+// type Taxa struct {
+// 	ID            int64    `jsonapi:"primary,taxons"`
+// 	Taxa          []*Taxon `jsonapi:"relation,taxons"`
+// 	offset, limit int64
+// }
 
 type Taxon struct {
 	ID        int64  `jsonapi:"primary,taxon"`
 	Name      string `jsonapi:"attr,name,omitempty"`
 	RankName  string `jsonapi:"attr,rank_name,omitempty"`
 	NameUsage string `jsonapi:"attr,name_usage,omitempty"`
+	Source    string `jsonapi:"attr,source,omitempty"`
 }
 
 type Node struct {

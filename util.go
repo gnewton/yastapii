@@ -4,14 +4,28 @@ import (
 	"errors"
 	"fmt"
 	yl "github.com/gnewton/yastapii/lib"
+	"github.com/google/jsonapi"
 	"log"
 	"net/url"
 	"strconv"
 )
 
+type Extras struct {
+	links *Links
+	meta  *Meta
+}
+
+type Links struct {
+	offset, limit int64
+}
+
+type Meta struct {
+	Count      int64
+	TotalCount int64
+}
+
 func addressAsString(v interface{}) string {
 	tmp := fmt.Sprintf("%p", v)
-	log.Println("Addresds as string", tmp)
 	return tmp
 }
 
@@ -23,6 +37,7 @@ func convertItisTaxonomicUnit(tu *yl.TaxonomicUnit) *Taxon {
 	taxon.ID = tu.Tsn
 	taxon.Name = tu.Unit_name1
 	taxon.NameUsage = tu.Name_usage
+	taxon.Source = "ITIS"
 
 	if tu.Rank_id == 220 {
 		taxon.Name += " " + tu.Unit_name2
@@ -66,27 +81,57 @@ func convertItisTaxonomicUnits(tu []yl.TaxonomicUnit, paging bool) Taxons {
 const PAGE_OFFSET = "page[offset]"
 const PAGE_LIMIT = "page[limit]"
 
+func makeOffsetLimits(offset, limit int64) *jsonapi.Links {
+	var links jsonapi.Links
+	links = make(map[string]interface{})
+
+	if offset+limit < numTaxons {
+		links["next"] = jsonapi.Link{
+			Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLNext(offset, limit)),
+		}
+	}
+
+	if offset-limit >= 0 {
+		links["previous"] = jsonapi.Link{
+			Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLPrevious(offset, limit)),
+		}
+	}
+
+	links["first"] = jsonapi.Link{
+		Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLFirst(limit)),
+	}
+
+	links["this"] = jsonapi.Link{
+		Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURL(offset, limit)),
+	}
+
+	links["last"] = jsonapi.Link{
+		Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLLast(numTaxons-limit, limit)),
+	}
+
+	return &links
+}
+
 func makeOffsetLimitURL(offset, limit int64) string {
 	return fmt.Sprintf(PAGE_OFFSET+"=%d"+"&"+PAGE_LIMIT+"=%d", offset, limit)
 }
 
 func makeOffsetLimitURLNext(offset, limit int64) string {
-	//return fmt.Sprintf(PAGE_OFFSET+"=%d"+"&"+PAGE_LIMIT+"=%d", offset+limit, limit)
 	return makeOffsetLimitURL(offset+limit, limit)
 }
 
 func makeOffsetLimitURLThis(offset, limit int64) string {
-	//return fmt.Sprintf(PAGE_OFFSET+"=%d"+"&"+PAGE_LIMIT+"=%d", offset, limit)
+
 	return makeOffsetLimitURL(offset, limit)
 }
 
 func makeOffsetLimitURLFirst(limit int64) string {
-	//return fmt.Sprintf(PAGE_OFFSET+"=%d"+"&"+PAGE_LIMIT+"=%d", 0, limit)
+
 	return makeOffsetLimitURL(0, limit)
 }
 
 func makeOffsetLimitURLLast(offset, limit int64) string {
-	//return fmt.Sprintf(PAGE_OFFSET+"=%d"+"&"+PAGE_LIMIT+"=%d", 0, limit)
+
 	return makeOffsetLimitURL(offset, limit)
 }
 
@@ -101,14 +146,12 @@ func makeOffsetLimitURLPrevious(offset, limit int64) string {
 }
 
 func makeOffsetLimit(query url.Values) (int64, int64, error) {
-	log.Println(query)
 	var offset int64 = 0
 	var limit int64 = 10
 	var err error
 
 	soffset := query.Get(PAGE_OFFSET)
 	slimit := query.Get(PAGE_LIMIT)
-	log.Println(soffset, "|", slimit, "|")
 
 	if soffset == "" && slimit == "" {
 		return offset, limit, nil
@@ -119,13 +162,11 @@ func makeOffsetLimit(query url.Values) (int64, int64, error) {
 
 	offset, err = strconv.ParseInt(soffset, 10, 64)
 	if err != nil {
-		log.Println(err)
 		return -1, -1, nil
 	}
 
 	limit, err = strconv.ParseInt(slimit, 10, 64)
 	if err != nil {
-		log.Println(err)
 		return -1, -1, nil
 	}
 

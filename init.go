@@ -8,6 +8,11 @@ import (
 )
 
 var taxonUnitsMap map[int64]*yl.TaxonUnitType
+var numTaxons int64
+
+func findMaxCounts(db *gorm.DB) {
+	numTaxons = yl.CountTaxonomicUnits(db, "")
+}
 
 func cacheTaxonUnits(db *gorm.DB) error {
 	taxonUnitsMap = make(map[int64]*yl.TaxonUnitType, 200)

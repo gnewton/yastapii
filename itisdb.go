@@ -12,10 +12,9 @@ import (
 )
 
 // Get Root
-
 func initDB() *gorm.DB {
 	db, err := gorm.Open("sqlite3", "./data/ITIS.sqlite")
-	//db, err := sql.Open("sqlite3", "./data/ITIS.sqlite")
+
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -40,11 +39,15 @@ func main() {
 
 	db := initDB()
 	defer db.Close()
+	db.LogMode(true)
 	err := cacheTaxonUnits(db)
 	if err != nil {
 		log.Fatal(err)
 	}
+	db.LogMode(true)
+	findMaxCounts(db)
 
+	fmt.Println("===============================")
 	addHandlers(router, db)
 	log.Fatal(http.ListenAndServe(":8080", router))
 

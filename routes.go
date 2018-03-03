@@ -9,10 +9,11 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"sync"
 )
 
 const ID = "id"
+
+var mm map[string]*Extras
 
 func addHandlers(router *mux.Router, db *gorm.DB) {
 	m := new(Manager)
@@ -20,12 +21,13 @@ func addHandlers(router *mux.Router, db *gorm.DB) {
 	router.HandleFunc("/node/{"+ID+":[0-9]+}", m.GetNode).Methods("GET")
 	router.HandleFunc("/node", m.GetNodes).Methods("GET")
 
-	router.HandleFunc("/taxon/{"+ID+":[0-9]+}", m.GetTaxon).Methods("GET")
+	router.HandleFunc("/taxon/{"+ID+":[0-9]+}", m.GetSingleTaxon).Methods("GET")
+	router.HandleFunc("/taxon?filter[", m.GetTaxonByQuery).Methods("GET")
 	//router.HandleFunc("/taxon/{"+ID+":[0-9]+}", m.GetTaxon).Methods("GET")
 	//router.HandleFunc("/taxon", m.GetTaxa).Queries(PAGE_OFFSET, "{"+PAGE_OFFSET+"}").Methods("GET")
 	//router.HandleFunc("/taxon", m.GetTaxa).Queries("foo", "{foo}").Methods("GET")
 
-	router.HandleFunc("/taxon", m.GetTaxa).Methods("GET")
+	router.HandleFunc("/taxon", m.GetAllTaxons).Methods("GET")
 	mm = make(map[string]*Extras)
 }
 
@@ -33,25 +35,31 @@ type Manager struct {
 	db *gorm.DB
 }
 
-var sm sync.Map
+func (m *Manager) GetTaxonByQuery(w http.ResponseWriter, r *http.Request) {
 
-var mm map[string]*Extras
+	params := mux.Vars(r)
+	log.Println("params", params)
+}
 
-func (m *Manager) GetTaxa(w http.ResponseWriter, r *http.Request) {
-
-	log.Println("GetTaxa")
-	log.Println(r.URL.Query())
+func (m *Manager) GetAllTaxons(w http.ResponseWriter, r *http.Request) {
+	log.Println("GetAllTaxa")
 	w.Header().Set("Content-Type", jsonapi.MediaType)
+
+	params := mux.Vars(r)
+	log.Printf("params: %v\n", params)
 
 	var err error
 	extras := new(Extras)
-	extras.offset, extras.limit, err = makeOffsetLimit(r.URL.Query())
+	extras.meta = new(Meta)
+	links := new(Links)
+	extras.links = links
+	links.offset, links.limit, err = makeOffsetLimit(r.URL.Query())
 
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	log.Println("============", extras.offset, extras.limit)
+	log.Println("============", links.offset, links.limit)
 
 	if err != nil {
 		jsonapi.MarshalErrors(w, []*jsonapi.ErrorObject{{
@@ -63,26 +71,18 @@ func (m *Manager) GetTaxa(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tu := yl.GetTaxonomicUnitAllOffsetLimit(m.db, extras.offset, extras.limit)
+	tu := yl.GetTaxonomicUnitAllOffsetLimit(m.db, extras.links.offset, extras.links.limit)
 	taxons := convertItisTaxonomicUnits(tu, true)
+	extras.meta.Count = int64(len(taxons))
+	extras.meta.TotalCount = numTaxons
 
 	addr := addressAsString(taxons)
 	log.Println("GetTaxa addr", addr)
-	//sm.Store(addr, extras)
-	sm.Store(&taxons, extras)
 	mm[addr] = extras
-
-	//w.WriteHeader(201)
-	//if err := jsonapi.MarshalPayloadWithoutIncluded(w, taxa); err != nil {
 	if err := jsonapi.MarshalPayloadWithoutIncluded(w, taxons); err != nil {
-		//if err := jsonapi.MarshalPayload(w, taxons); err != nil {
-		//if err := jsonapi.MarshalPayload(w, taxa); err != nil {
 		http.Error(w, err.Error(), 500)
 	}
-}
-
-type Extras struct {
-	offset, limit int64
+	delete(mm, addr)
 }
 
 func (taxon Taxon) JSONAPILinks() *jsonapi.Links {
@@ -100,10 +100,19 @@ type Taxons []*Taxon
 
 func (taxa Taxons) JSONAPIMeta() *jsonapi.Meta {
 	log.Println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+	addr := addressAsString(taxa)
+	extras, ok := mm[addr]
+	if !ok {
+		log.Fatal("Missing address")
+	}
 	a := fmt.Sprintf("%p", &taxa)
 	log.Println(a)
 	return &jsonapi.Meta{
-		"details": "sample details here",
+		"Version":     1,
+		"Software":    "yastapii",
+		"Author":      "Glen Newton",
+		"count":       extras.meta.Count,
+		"total_count": extras.meta.TotalCount,
 	}
 }
 
@@ -114,42 +123,19 @@ func (taxa Taxons) JSONAPILinks() *jsonapi.Links {
 		log.Fatal("Missing address")
 	}
 	// FIXX with RWMutex
-	delete(mm, addr)
-	log.Println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%mm")
-	return &jsonapi.Links{
-		"next": jsonapi.Link{
-			Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLNext(extras.offset, extras.limit)),
-			//Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLNext(10, 10)),
-		},
-		"previous": jsonapi.Link{
-			Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLPrevious(extras.offset, extras.limit)),
-			//Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLNext(10, 10)),
-		},
-		"first": jsonapi.Link{
-			Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLFirst(extras.limit)),
-			//Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLNext(10, 10)),
-		},
-		"this": jsonapi.Link{
-			Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURL(extras.offset, extras.limit)),
-			//Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLNext(10, 10)),
-		},
 
-		"last": jsonapi.Link{
-			Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLLast(10000, extras.limit)),
-			//Href: fmt.Sprintf("http://localhost:8080/taxon?"+"%s", makeOffsetLimitURLNext(10, 10)),
-		},
-	}
+	return makeOffsetLimits(extras.links.offset, extras.links.limit)
 }
 
-func (m *Manager) GetTaxon(w http.ResponseWriter, r *http.Request) {
-	log.Println("GetTaxon")
+func (m *Manager) GetSingleTaxon(w http.ResponseWriter, r *http.Request) {
+	log.Println("GetSingleTaxon")
 	w.Header().Set("Content-Type", jsonapi.MediaType)
 	params := mux.Vars(r)
-	log.Println(params)
 	s, ok := params[ID]
 	if !ok {
 		http.Error(w, "Missing parameter", 500)
 	}
+	log.Printf("params: %v\n", params)
 	id, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
 		http.Error(w, "FIXXX", 500)
@@ -231,18 +217,14 @@ func (m *Manager) GetNode(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	var node Node
 	idStr, ok := params[ID]
-	log.Println("params", r)
-	log.Println("params", params)
-	log.Println("----", idStr, ok)
 	if ok {
-		id, err := strconv.Atoi(idStr)
+		_, err := strconv.Atoi(idStr)
 		if err != nil {
 			// 400
 			w.Header().Set("Content-Type", jsonapi.MediaType)
 			http.Error(w, "Bad parameter", 500)
 			return
 		}
-		log.Println(id, ok)
 	}
 	//node.ID =
 
