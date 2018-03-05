@@ -75,7 +75,7 @@ func main() {
 			}
 			fmt.Println("\t", parents[j].Tsn, " ", parents[j].Unit_name1, "   ", rank.Rank_name)
 		}
-		children := yl.GetTaxonomicUnitChildren(db, &tu[i])
+		children := yl.GetTaxonomicUnitChildren(db, &tu[i], nil)
 		fmt.Println("Children")
 		for j, _ := range children {
 			rank, ok := taxonUnitsMap[uint64(children[j].Rank_id)]
