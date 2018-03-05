@@ -6,23 +6,23 @@ import (
 )
 
 type TaxonUnitType2 struct {
-	KingdomId       int64
-	RankId          int64
+	KingdomId       uint64
+	RankId          uint64
 	RankName        string
-	DirParentRankId int64
-	ReqParentRankId int64
+	DirParentRankId uint64
+	ReqParentRankId uint64
 }
 
 type TaxonUnitType struct {
-	Kingdom_id         int64
-	Rank_id            int64
+	Kingdom_id         uint64
+	Rank_id            uint64
 	Rank_name          string
-	Dir_parent_rank_id int64
-	Req_parent_rank_id int64
+	Dir_parent_rank_id uint64
+	Req_parent_rank_id uint64
 }
 
 type TaxonomicUnit struct {
-	Tsn                int64
+	Tsn                uint64
 	Unit_ind1          []byte
 	Unit_name1         string
 	Unit_ind2          string
@@ -39,25 +39,25 @@ type TaxonomicUnit struct {
 	Currency_rating    string
 	Phylo_sort_seq     int32
 	Initial_time_stamp time.Time
-	Parent_tsn         int64
-	Taxon_author_id    int64
-	Hybrid_author_id   int64
-	Kingdom_id         int64
-	Rank_id            int64
+	Parent_tsn         uint64
+	Taxon_author_id    uint64
+	Hybrid_author_id   uint64
+	Kingdom_id         uint64
+	Rank_id            uint64
 	Update_date        time.Time
 	Uncertain_prnt_ind string
 	N_usage            string
 	Complete_name      string
 }
 
-func CountTaxonomicUnits(db *gorm.DB, where string) int64 {
-	var count int64
+func CountTaxonomicUnits(db *gorm.DB, where string) uint64 {
+	var count uint64
 	var tmp TaxonomicUnit
 	db.Select("tsn").Find(&tmp).Count(&count)
 	return count
 }
 
-func GetTaxonomicUnitByTSN(db *gorm.DB, tsn int64) *TaxonomicUnit {
+func GetTaxonomicUnitByTSN(db *gorm.DB, tsn uint64) *TaxonomicUnit {
 	var tu TaxonomicUnit
 	db.Where("tsn=?", tsn).First(&tu)
 	if tu.Tsn == 0 {
@@ -66,15 +66,36 @@ func GetTaxonomicUnitByTSN(db *gorm.DB, tsn int64) *TaxonomicUnit {
 	return &tu
 }
 
-func GetTaxonomicUnitAllOffsetLimit(db *gorm.DB, offset, limit int64) []TaxonomicUnit {
+func GetTaxonomicUnitAllOffsetLimit(db *gorm.DB, offset, limit uint64) []TaxonomicUnit {
 	var tu []TaxonomicUnit
 	db.Offset(offset).Limit(limit).Find(&tu)
 	return tu
 }
 
-func GetTaxonomicUnitChildren(db *gorm.DB, tu *TaxonomicUnit) []*TaxonomicUnit {
+func GetTaxonomicUnitChildren(db *gorm.DB, tu *TaxonomicUnit, fields []string) []*TaxonomicUnit {
+	return GetTaxonomicUnitChildrenById(db, tu.Tsn, fields)
+}
+
+func GetTaxonomicUnitChildrenById(db *gorm.DB, tsn uint64, fields []string) []*TaxonomicUnit {
 	var children []*TaxonomicUnit
-	db.Where("parent_tsn=?", tu.Tsn).Find(&children)
+	if fields == nil || len(fields) == 0 {
+		db.Where("parent_tsn=?", tsn).Find(&children)
+	} else {
+		db.Select(fields).Where("parent_tsn=?", tsn).Find(&children)
+	}
+
+	return children
+}
+
+func GetTaxonomicUnitByFieldValueInt(db *gorm.DB, fieldName string, fieldValue uint64) []*TaxonomicUnit {
+	var children []*TaxonomicUnit
+	db.Where(fieldName+"=?", fieldValue).Find(&children)
+	return children
+}
+
+func GetTaxonomicUnitByFieldValueString(db *gorm.DB, fieldName, fieldValue string) []*TaxonomicUnit {
+	var children []*TaxonomicUnit
+	db.Where(fieldName+"=\"?\"", fieldValue).Find(&children)
 	return children
 }
 
