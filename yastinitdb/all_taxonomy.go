@@ -21,7 +21,7 @@ type Taxonomy struct {
 	RootNode uint64
 }
 
-var txSize = 2000
+var channelSize = 5000
 
 type DBInfo struct {
 	boltdb *bolt.DB
@@ -39,7 +39,7 @@ var otherTaxonomiesStartingTaxons = []uint64{194402, 82696, 18063, 245, 612944, 
 func makeAllTaxonomy(db *gorm.DB, boltdb *bolt.DB) {
 	rand.Seed(time.Now().UnixNano())
 
-	c := make(chan *Node, txSize)
+	c := make(chan *Node, channelSize)
 	done := make(chan struct{}, 0)
 
 	tx, err := boltdb.Begin(true)
@@ -60,8 +60,10 @@ func makeAllTaxonomy(db *gorm.DB, boltdb *bolt.DB) {
 		root_node := new(Node)
 		root_node.Id = counter
 		root_node.Name = taxon.Complete_name
+
 		counter += 1
 		fmt.Println("\n\n\n\n*******************************************************************\n\n")
+		fmt.Println("Taxonomy root:", root_node.Id, root_node.Name)
 		fmt.Println(taxon)
 
 		//root_node.Children = traverseTaxonomicUnits(db, c, t, root_node.Id, true)
@@ -72,7 +74,7 @@ func makeAllTaxonomy(db *gorm.DB, boltdb *bolt.DB) {
 		}
 	}
 
-	if false {
+	if true {
 
 		kingdoms := yl.GetTaxonomicUnitByFieldValueInt(db, "rank_id", 10)
 
@@ -80,6 +82,8 @@ func makeAllTaxonomy(db *gorm.DB, boltdb *bolt.DB) {
 		root_node.Id = counterStart
 		root_node.Name = "__root__"
 		counter += 1
+		fmt.Println("\n\n\n\n*******************************************************************\n\n")
+		fmt.Println("Full Taxonomy root:", root_node.Id, root_node.Name)
 
 		for i, _ := range kingdoms {
 			k := kingdoms[i]
@@ -104,9 +108,8 @@ func makeAllTaxonomy(db *gorm.DB, boltdb *bolt.DB) {
 	_ = <-done
 
 	log.Println("Got done")
-	if true {
+	if false {
 		tx, err = boltdb.Begin(false)
-		//b, err = tx.CreateBucketIfNotExists([]byte(nodeBucket))
 		b = tx.Bucket([]byte(nodeBucket))
 		if b == nil {
 			log.Fatal("Bucket does not exist")
@@ -136,15 +139,25 @@ func makeAllTaxonomy(db *gorm.DB, boltdb *bolt.DB) {
 			if err != nil {
 				log.Fatal("decode error 1:", err)
 			}
-			fmt.Printf("\n+++ %+v", node)
+			//fmt.Printf("\n+++ %+v", node)
 		}
 		log.Println("End cursor")
 	}
 
+	tx, err = boltdb.Begin(false)
+	b = tx.Bucket([]byte(nodeBucket))
+	if b == nil {
+		log.Fatal("Bucket does not exist")
+	}
+
 	log.Println("Start traverse")
+	traverseNodes(b, 134, 0)
+	//traverseNodes(b, 357841, 0)
 }
 
 var txCount = 0
+
+const txSize = 35000
 
 func addNodes(db *DBInfo, c chan *Node, done chan struct{}) {
 	go func() {
@@ -153,8 +166,7 @@ func addNodes(db *DBInfo, c chan *Node, done chan struct{}) {
 			if txCount%5000 == 0 {
 				fmt.Println(txCount)
 			}
-			//if txCount%50000 == 0 {
-			if txCount%50000 == 0 {
+			if txCount%txSize == 0 {
 				var err error
 				fmt.Println("\tCommit")
 				if err = db.tx.Commit(); err != nil {
@@ -166,9 +178,9 @@ func addNodes(db *DBInfo, c chan *Node, done chan struct{}) {
 				if err != nil {
 					log.Fatal(err)
 				}
-				db.bucket, err = db.tx.CreateBucketIfNotExists([]byte(nodeBucket))
-				if err != nil {
-					log.Fatal(err)
+				db.bucket = db.tx.Bucket([]byte(nodeBucket))
+				if db.bucket == nil {
+					log.Fatal("Bucket does not exist")
 				}
 
 			}
@@ -185,6 +197,26 @@ func addNodes(db *DBInfo, c chan *Node, done chan struct{}) {
 		done <- struct{}{}
 
 	}()
+
+}
+
+func traverseNodes(b *bolt.Bucket, nodeId uint64, depth int) {
+	node, err := getNode(b, nodeId)
+	if err != nil {
+		log.Fatal(err)
+	}
+	//fmt.Printf("\n"+spaces(depth)+"+++ %+v", node)
+	for i := 0; i < len(node.Children); i++ {
+		traverseNodes(b, node.Children[i], depth+2)
+	}
+}
+
+func spaces(n int) string {
+	s := ""
+	for i := 0; i < n; i++ {
+		s = s + " "
+	}
+	return s
 
 }
 

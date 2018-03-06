@@ -44,3 +44,18 @@ func addNode2(bucket *bolt.Bucket, node *Node) error {
 	err = bucket.Put(keyBytes, structBytes.Bytes())
 	return err
 }
+
+func getNode(bucket *bolt.Bucket, nodeId uint64) (*Node, error) {
+	keyBytes := make([]byte, binary.MaxVarintLen64)
+	binary.PutUvarint(keyBytes, nodeId)
+
+	v := bucket.Get(keyBytes)
+	var node Node
+	buff := bytes.NewBuffer(v)
+	dec := gob.NewDecoder(buff)
+	err := dec.Decode(&node)
+	if err != nil {
+		log.Fatal("decode error 1:", err)
+	}
+	return &node, nil
+}
